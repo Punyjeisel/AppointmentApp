@@ -1,30 +1,23 @@
-# --- .NET ---
+# Archivos de documentación local (no subir a GitHub)
+*.md
+
+# Entornos virtuales y caché de .NET
 bin/
 obj/
+.vs/
+.idea/
+
+# Archivos de usuario de Visual Studio
 *.user
 *.suo
-*.cache
-*.dotcover
+
+# Paquetes NuGet
 *.nupkg
-*.snupkg
-.vs/
-*.exe
-*.dll
-*.pdb
-*.idb
-.local/
 
-# --- Environment / secrets ---
+# Archivos temporales
+*.log
+*.tmp
+*.DS_Store
+
+# Secretos locales (no subir credenciales)
 appsettings.Development.json
-*.publish.xml
-*.pubxml
-!appsettings.json
-
-# --- IDE ---
-.idea/
-.vscode/
-*.code-workspace
-
-# --- OS ---
-.DS_Store
-Thumbs.db
