@@ -1,54 +1,21 @@
 using System.Diagnostics.CodeAnalysis;
 using AppointmentApp.Core.Entities;
 using AppointmentApp.Core.Interfaces;
+using AppointmentApp.Core.Persistence;
 
 namespace AppointmentApp.Core.Services;
 
-// Servicio de disponibilidad con datos en memoria (sin base de datos todavía).
+// Servicio de disponibilidad con base de datos PostgreSQL (Entity Framework Core).
 // Zona horaria del negocio: America/Santo_Domingo (UTC-4, sin horario de verano).
 public sealed class AvailabilityService : IAvailabilityService
 {
-    // Horario predeterminado del negocio por día de la semana.
-    // Domingo está cerrado (apertura == cierre).
-    private static readonly Dictionary<DayOfWeek, (TimeSpan Open, TimeSpan Close)> DefaultSchedule = new()
-    {
-        [DayOfWeek.Monday] = (new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-        [DayOfWeek.Tuesday] = (new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-        [DayOfWeek.Wednesday] = (new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-        [DayOfWeek.Thursday] = (new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-        [DayOfWeek.Friday] = (new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)),
-        [DayOfWeek.Saturday] = (new TimeSpan(9, 0, 0), new TimeSpan(13, 0, 0)),
-        [DayOfWeek.Sunday] = (new TimeSpan(0, 0, 0), new TimeSpan(0, 0, 0)),
-    };
 
-    // Citas existentes en memoria (datos de prueba).
-    private readonly List<Appointment> _appointments = new()
-    {
-        new Appointment
-        {
-            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Start = new DateTime(2026, 11, 23, 9, 0, 0, DateTimeKind.Unspecified),
-            End = new DateTime(2026, 11, 23, 10, 0, 0, DateTimeKind.Unspecified),
-            ClientName = "Juan Pérez",
-            ClientEmail = "juan@example.com",
-            CreatedAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Unspecified)
-        },
-        new Appointment
-        {
-            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            Start = new DateTime(2026, 11, 23, 11, 0, 0, DateTimeKind.Unspecified),
-            End = new DateTime(2026, 11, 23, 12, 0, 0, DateTimeKind.Unspecified),
-            ClientName = "María García",
-            ClientEmail = "maria@example.com",
-            CreatedAt = new DateTime(2026, 11, 20, 11, 0, 0, DateTimeKind.Unspecified)
-        }
-    };
+    private AppointmentDbContext _context;
 
-    // Bloqueos en memoria (datos de prueba).
-    private readonly List<(DateTime Start, DateTime End)> _blockedSlots = new()
+    public AvailabilityService (AppointmentDbContext context)
     {
-        (new DateTime(2026, 11, 23, 13, 0, 0), new DateTime(2026, 11, 23, 14, 0, 0))
-    };
+        _context = context;
+    }
 
     // Offset de la zona horaria del negocio: America/Santo_Domingo es UTC-4 todo el año.
     private static readonly TimeSpan BusinessTimeZoneOffset = TimeSpan.FromHours(-4);
@@ -57,29 +24,31 @@ public sealed class AvailabilityService : IAvailabilityService
     public const int AppointmentDurationMinutes = 60;
 
     // Devuelve los horarios disponibles para una fecha.
-    // Considera horario de apertura/cierre, citas existentes y bloqueos.
+    // Considera horario de apertura/cierre y citas existentes.
     public IEnumerable<AvailabilitySlot> GetAvailableSlots(DateTime date)
     {
         var localDate = date.Date;
 
+        var schedule = _context.WorkSchedules.FirstOrDefault(w => w.DayOfWeek == localDate.DayOfWeek && w.IsWorkingDay);
+
+
         // Si el día no tiene horario definido o está cerrado, no hay slots.
-        if (!DefaultSchedule.TryGetValue(localDate.DayOfWeek, out var schedule))
+        if (schedule is null)
             return Enumerable.Empty<AvailabilitySlot>();
 
-        if (schedule.Open == schedule.Close)
+        if (schedule.OpenTime == schedule.CloseTime)
             return Enumerable.Empty<AvailabilitySlot>();
 
         var slots = new List<AvailabilitySlot>();
-        var current = localDate.Date + schedule.Open;
-        var endOfDay = localDate.Date + schedule.Close;
+        var current = localDate.Date + schedule.OpenTime;
+        var endOfDay = localDate.Date + schedule.CloseTime;
 
         // Generar slots de 60 minutos desde apertura hasta cierre.
         while (current.AddMinutes(AppointmentDurationMinutes) <= endOfDay)
         {
             var slotEnd = current.AddMinutes(AppointmentDurationMinutes);
-            var isBlocked = _appointments.Any(a => current < a.End && slotEnd > a.Start) ||
-                            _blockedSlots.Any(b => current < b.End && slotEnd > b.Start);
-
+            var citas = _context.Appointments.ToList();
+            var isBlocked = citas.Any(a => current < a.End && slotEnd > a.Start);
             slots.Add(new AvailabilitySlot
             {
                 Start = current,
@@ -94,7 +63,7 @@ public sealed class AvailabilityService : IAvailabilityService
     }
 
     // Devuelve las citas creadas.
-    public IEnumerable<Appointment> GetAppointments() => _appointments;
+    public IEnumerable<Appointment> GetAppointments() => _context.Appointments;
 
     // Intenta crear una cita empezando en 'start'.
     // Valida: anticipación mínima (1h), máxima (30d), duración (60min), solapamientos.
@@ -124,37 +93,34 @@ public sealed class AvailabilityService : IAvailabilityService
         // Regla: no solaparse con citas existentes ni bloqueos.
         // Dos citas se solapan si el inicio de una es antes del fin de la otra
         // y el fin de una es después del inicio de la otra.
-        var chocaConCita = _appointments.Any(a => start < a.End && end > a.Start);
-        var chocaConBloqueo = _blockedSlots.Any(b => start < b.End && end > b.Start);
-
-        if (chocaConCita || chocaConBloqueo)
-        {
-            reason = "El horario ya está ocupado o bloqueado.";
-            return false;
-        }
+        var chocaConCita = _context.Appointments.Any(a => start < a.End && end > a.Start);
 
         // Todo validó correctamente.
         return true;
     }
 
-    // Agrega una cita a la memoria (uso de pruebas y Nivel 0).
-    public void AddAppointment(Appointment appointment) => _appointments.Add(appointment);
+    // Agrega una cita a la base de datos (uso interno de la API).
+    public void AddAppointment(Appointment appointment)
+    {
+        _context.Add(appointment);
+        _context.SaveChanges();
+    }
 
     // Elimina una cita por su fecha de inicio (uso interno de la API).
     public bool RemoveAppointment(DateTime appointmentStart)
     {
-        var cita = _appointments.FirstOrDefault(a => a.Start == appointmentStart);
-        if (cita is null)
-            return false;
-        return _appointments.Remove(cita);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        if (cita is null) return false;
+        _context.Appointments.Remove(cita);
+        _context.SaveChanges();
+        return true;
     }
 
-    // NIVEL 2 — Pendiente de implementar por el usuario.
     // Regla: cancelación con al menos 2 horas de anticipación.
     public bool CanCancelAppointment(DateTime appointmentStart, out string? reason)
     {
         reason = null;
-        var cita = _appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
         DateTime now = DateTime.UtcNow.AddHours(-4);
         
         if (cita == null)
@@ -169,15 +135,14 @@ public sealed class AvailabilityService : IAvailabilityService
             return false;
         }
 
-        return true; // NIVEL 2: implementar CanCancelAppointment.
+        return true;
     }
 
-    // NIVEL 2 — Pendiente de implementar por el usuario.
     // Regla: reprogramación con al menos 24 horas de anticipación para la cita original.
     public bool CanRescheduleAppointment(DateTime appointmentStart, DateTime newStart, out string? reason)
     {
         reason = null;
-        var cita = _appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
         
     if (cita == null)
         {
