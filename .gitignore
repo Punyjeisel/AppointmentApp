@@ -1,0 +1,30 @@
+# --- .NET ---
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dotcover
+*.nupkg
+*.snupkg
+.vs/
+*.exe
+*.dll
+*.pdb
+*.idb
+.local/
+
+# --- Environment / secrets ---
+appsettings.Development.json
+*.publish.xml
+*.pubxml
+!appsettings.json
+
+# --- IDE ---
+.idea/
+.vscode/
+*.code-workspace
+
+# --- OS ---
+.DS_Store
+Thumbs.db

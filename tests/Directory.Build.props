@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <EnableVSTestTarget>true</EnableVSTestTarget>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+</Project>
