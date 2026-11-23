@@ -1,4 +1,4 @@
-using AppointmentApp.Core.Entities;
+using AppointmentApp.Core.Dto;
 using AppointmentApp.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,13 +15,15 @@ public class AppointmentsController : ControllerBase
         _availabilityService = availabilityService;
     }
 
+    // GET /api/appointments/available-slots?date=2026-11-23
     [HttpGet("available-slots")]
-    public IActionResult GetAvailableSlots ( DateTime date)
+    public IActionResult GetAvailableSlots(DateTime date)
     {
         var slots = _availabilityService.GetAvailableSlots(date);
         return Ok(slots);
     }
 
+    // GET /api/appointments
     [HttpGet]
     public IActionResult GetAppointments()
     {
@@ -29,68 +31,76 @@ public class AppointmentsController : ControllerBase
         return Ok(appointments);
     }
 
+    // POST /api/appointments
     [HttpPost]
-    public IActionResult CreateAppointment([FromBody] Appointment appointment)
+    public IActionResult CreateAppointment([FromBody] CreateAppointmentRequest request)
     {
-        var available = _availabilityService.CanCreateAppointment(appointment.Start, out var reason);
+        var available = _availabilityService.CanCreateAppointment(request.Start, out var reason);
 
         if (available == false)
         {
-            return BadRequest(new { error = reason});
+            return BadRequest(new { error = reason });
         }
 
-        appointment.End = appointment.Start.AddMinutes(60);
-        _availabilityService.AddAppointment(appointment);
+        _availabilityService.AddAppointment(request);
 
-        return Created($"/api/appointments/{appointment.Id}", appointment);
+        var end = request.Start.AddMinutes(60);
+
+        return Created($"/api/appointments/{request.Start}", new AppointmentCreatedResponse
+        {
+            Message = "Cita creada correctamente",
+            Start = request.Start,
+            End = end,
+            ClientName = request.ClientName
+        });
     }
 
+    // DELETE /api/appointments/cancel?start=2026-11-23T10:00:00
     [HttpDelete("cancel")]
     public IActionResult DeleteAppointment(DateTime start)
     {
         var ok = _availabilityService.CanCancelAppointment(start, out var reason);
-        var remove = true;
 
-        if (ok)
-            remove = _availabilityService.RemoveAppointment(start);
-        else
-            return BadRequest( new {error = reason});
+        if (!ok)
+            return BadRequest(new { error = reason });
 
-        if (remove == false)
-            return NotFound( new {error = "Cita no encontrada"});
-        
-        return Ok( new {message = "Cita Cancelada correctamente"});
+        var remove = _availabilityService.RemoveAppointment(start);
+
+        if (!remove)
+            return NotFound(new { error = "Cita no encontrada" });
+
+        return Ok(new OperationResponse
+        {
+            Message = "Cita cancelada correctamente",
+            Success = true
+        });
     }
 
+    // PUT /api/appointments/reschedule?start=2026-11-23T10:00:00&newStart=2026-11-23T14:00:00
     [HttpPut("reschedule")]
-    public IActionResult RecheduleAppointment(DateTime start, DateTime newStart)
+    public IActionResult RescheduleAppointment(DateTime start, DateTime newStart)
     {
         var ok = _availabilityService.CanRescheduleAppointment(start, newStart, out var reason);
-        var remove = true;
 
-        if (ok)
-            remove = _availabilityService.RemoveAppointment(start);
-        else
-            return BadRequest( new {error = reason});
+        if (!ok)
+            return BadRequest(new { error = reason });
 
-        if (remove == false)
-            return NotFound( new {error = "Cita no encontrada"});
+        var remove = _availabilityService.RemoveAppointment(start);
 
-        var newAppointment = new Appointment
+        if (!remove)
+            return NotFound(new { error = "Cita no encontrada" });
+
+        _availabilityService.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = newStart,
-            End = newStart.AddMinutes(60),
             ClientName = string.Empty,
-            ClientEmail = string.Empty,
-            CreatedAt = DateTime.UtcNow.AddHours(-4)
-        };
+            ClientEmail = string.Empty
+        });
 
-        _availabilityService.AddAppointment(newAppointment);
-
-        return Ok(new { message = "Cita reporgramada Correctamente", Appointment = newAppointment});
+        return Ok(new OperationResponse
+        {
+            Message = "Cita reprogramada correctamente",
+            Success = true
+        });
     }
 }
-
-
-

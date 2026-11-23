@@ -1,9 +1,10 @@
+namespace AppointmentApp.Core.Services;
+
 using System.Diagnostics.CodeAnalysis;
+using AppointmentApp.Core.Dto;
 using AppointmentApp.Core.Entities;
 using AppointmentApp.Core.Interfaces;
 using AppointmentApp.Core.Persistence;
-
-namespace AppointmentApp.Core.Services;
 
 // Servicio de disponibilidad con base de datos PostgreSQL (Entity Framework Core).
 // Zona horaria del negocio: America/Santo_Domingo (UTC-4, sin horario de verano).
@@ -25,7 +26,7 @@ public sealed class AvailabilityService : IAvailabilityService
 
     // Devuelve los horarios disponibles para una fecha.
     // Considera horario de apertura/cierre y citas existentes.
-    public IEnumerable<AvailabilitySlot> GetAvailableSlots(DateTime date)
+    public IEnumerable<AvailabilitySlotDto> GetAvailableSlots(DateTime date)
     {
         var localDate = date.Date;
 
@@ -34,12 +35,12 @@ public sealed class AvailabilityService : IAvailabilityService
 
         // Si el día no tiene horario definido o está cerrado, no hay slots.
         if (schedule is null)
-            return Enumerable.Empty<AvailabilitySlot>();
+            return Enumerable.Empty<AvailabilitySlotDto>();
 
         if (schedule.OpenTime == schedule.CloseTime)
-            return Enumerable.Empty<AvailabilitySlot>();
+            return Enumerable.Empty<AvailabilitySlotDto>();
 
-        var slots = new List<AvailabilitySlot>();
+        var slots = new List<AvailabilitySlotDto>();
         var current = localDate.Date + schedule.OpenTime;
         var endOfDay = localDate.Date + schedule.CloseTime;
 
@@ -49,11 +50,12 @@ public sealed class AvailabilityService : IAvailabilityService
             var slotEnd = current.AddMinutes(AppointmentDurationMinutes);
             var citas = _context.Appointments.ToList();
             var isBlocked = citas.Any(a => current < a.End && slotEnd > a.Start);
-            slots.Add(new AvailabilitySlot
+            slots.Add(new AvailabilitySlotDto
             {
                 Start = current,
                 End = slotEnd,
-                IsAvailable = !isBlocked
+                IsAvailable = !isBlocked,
+                DurationMinutes = AppointmentDurationMinutes
             });
 
             current = slotEnd;
@@ -62,8 +64,14 @@ public sealed class AvailabilityService : IAvailabilityService
         return slots;
     }
 
-    // Devuelve las citas creadas.
-    public IEnumerable<Appointment> GetAppointments() => _context.Appointments;
+    // Devuelve las citas creadas (sin exponer Id ni datos sensibles).
+    public IEnumerable<AppointmentDto> GetAppointments() =>
+        _context.Appointments.Select(a => new AppointmentDto
+        {
+            Start = a.Start,
+            End = a.End,
+            ClientName = a.ClientName
+        }).ToList();
 
     // Intenta crear una cita empezando en 'start'.
     // Valida: anticipación mínima (1h), máxima (30d), duración (60min), solapamientos.
@@ -100,8 +108,17 @@ public sealed class AvailabilityService : IAvailabilityService
     }
 
     // Agrega una cita a la base de datos (uso interno de la API).
-    public void AddAppointment(Appointment appointment)
+    public void AddAppointment(CreateAppointmentRequest request)
     {
+        var appointment = new Appointment
+        {
+            Start = request.Start,
+            End = request.Start.AddMinutes(AppointmentDurationMinutes),
+            ClientName = request.ClientName,
+            ClientEmail = request.ClientEmail,
+            CreatedAt = DateTime.UtcNow.AddHours(-4)
+        };
+
         _context.Add(appointment);
         _context.SaveChanges();
     }

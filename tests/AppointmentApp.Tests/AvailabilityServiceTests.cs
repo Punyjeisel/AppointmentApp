@@ -1,3 +1,4 @@
+using AppointmentApp.Core.Dto;
 using AppointmentApp.Core.Entities;
 using AppointmentApp.Core.Persistence;
 using AppointmentApp.Core.Services;
@@ -98,14 +99,11 @@ public class AvailabilityServiceTests
     public void GetAvailableSlots_MarksBlockedSlotAsUnavailable()
     {
         // Insertar una cita a las 13:00-14:00 para ocupar ese slot
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = new DateTime(2026, 11, 23, 13, 0, 0, DateTimeKind.Unspecified),
-            End = new DateTime(2026, 11, 23, 14, 0, 0, DateTimeKind.Unspecified),
             ClientName = "Cita de prueba bloqueo",
-            ClientEmail = "test@test.com",
-            CreatedAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Unspecified)
+            ClientEmail = "test@test.com"
         });
 
         var date = new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Unspecified);
@@ -129,14 +127,11 @@ public class AvailabilityServiceTests
     public void CanCreateAppointment_RejectsOverlappingAppointment()
     {
         // Insertar una cita existente a las 9:00-10:00 para crear solapamiento
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = new DateTime(2026, 11, 23, 9, 0, 0, DateTimeKind.Unspecified),
-            End = new DateTime(2026, 11, 23, 10, 0, 0, DateTimeKind.Unspecified),
             ClientName = "Cita existente",
-            ClientEmail = "existente@test.com",
-            CreatedAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Unspecified)
+            ClientEmail = "existente@test.com"
         });
 
         var ok = _service.CanCreateAppointment(
@@ -208,14 +203,11 @@ public class AvailabilityServiceTests
         var appointmentStart = ahoraLocal.AddMinutes(90); // solo 1.5 horas
 
         // Agregar la cita al servicio para que exista
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = appointmentStart,
-            End = appointmentStart.AddMinutes(60),
             ClientName = "Test Cancel",
-            ClientEmail = "test@test.com",
-            CreatedAt = ahoraLocal
+            ClientEmail = "test@test.com"
         });
 
         var ok = _service.CanCancelAppointment(appointmentStart, out var reason);
@@ -233,14 +225,11 @@ public class AvailabilityServiceTests
         var appointmentStart = ahoraLocal.AddHours(2).AddMinutes(1); // margen de 1 minuto
 
         // Agregar la cita al servicio para que exista
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = appointmentStart,
-            End = appointmentStart.AddMinutes(60),
             ClientName = "Test Cancel OK",
-            ClientEmail = "test@test.com",
-            CreatedAt = ahoraLocal
+            ClientEmail = "test@test.com"
         });
 
         var ok = _service.CanCancelAppointment(appointmentStart, out var reason);
@@ -258,14 +247,11 @@ public class AvailabilityServiceTests
         var newStart = ahoraLocal.AddDays(2).AddHours(10);
 
         // Agregar la cita al servicio para que exista
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = appointmentStart,
-            End = appointmentStart.AddMinutes(60),
             ClientName = "Test Reschedule",
-            ClientEmail = "test@test.com",
-            CreatedAt = ahoraLocal
+            ClientEmail = "test@test.com"
         });
 
         var ok = _service.CanRescheduleAppointment(appointmentStart, newStart, out var reason);
@@ -284,14 +270,11 @@ public class AvailabilityServiceTests
         var newStart = ahoraLocal.AddDays(3).AddHours(10); // nueva cita válida
 
         // Agregar la cita al servicio para que exista
-        _service.AddAppointment(new Appointment
+        _service.AddAppointment(new CreateAppointmentRequest
         {
-            Id = Guid.NewGuid(),
             Start = appointmentStart,
-            End = appointmentStart.AddMinutes(60),
             ClientName = "Test Reschedule OK",
-            ClientEmail = "test@test.com",
-            CreatedAt = ahoraLocal
+            ClientEmail = "test@test.com"
         });
 
         var ok = _service.CanRescheduleAppointment(appointmentStart, newStart, out var reason);
