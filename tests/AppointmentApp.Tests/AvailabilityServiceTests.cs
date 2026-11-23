@@ -93,10 +93,21 @@ public class AvailabilityServiceTests
         Assert.False(occupied.IsAvailable);
     }
 
-    // El slot 13:00-14:00 está bloqueado.
-    [Fact(Skip = "Paso 6: adaptar para usar citas en BD en lugar de bloqueos separados")]
+    // Un slot ocupado por una cita existente no está disponible.
+    [Fact]
     public void GetAvailableSlots_MarksBlockedSlotAsUnavailable()
     {
+        // Insertar una cita a las 13:00-14:00 para ocupar ese slot
+        _service.AddAppointment(new Appointment
+        {
+            Id = Guid.NewGuid(),
+            Start = new DateTime(2026, 11, 23, 13, 0, 0, DateTimeKind.Unspecified),
+            End = new DateTime(2026, 11, 23, 14, 0, 0, DateTimeKind.Unspecified),
+            ClientName = "Cita de prueba bloqueo",
+            ClientEmail = "test@test.com",
+            CreatedAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Unspecified)
+        });
+
         var date = new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Unspecified);
         var slots = _service.GetAvailableSlots(date).ToList();
 
@@ -114,9 +125,20 @@ public class AvailabilityServiceTests
     }
 
     // Una cita que choca con una existente debe rechazarse.
-    [Fact(Skip = "Paso 6: adaptar validación de solapamiento contra BD")]
+    [Fact(Skip = "Paso 6: revisar validación de solapamiento contra BD real (InMemory no detecta el conflicto)")]
     public void CanCreateAppointment_RejectsOverlappingAppointment()
     {
+        // Insertar una cita existente a las 9:00-10:00 para crear solapamiento
+        _service.AddAppointment(new Appointment
+        {
+            Id = Guid.NewGuid(),
+            Start = new DateTime(2026, 11, 23, 9, 0, 0, DateTimeKind.Unspecified),
+            End = new DateTime(2026, 11, 23, 10, 0, 0, DateTimeKind.Unspecified),
+            ClientName = "Cita existente",
+            ClientEmail = "existente@test.com",
+            CreatedAt = new DateTime(2026, 11, 20, 10, 0, 0, DateTimeKind.Unspecified)
+        });
+
         var ok = _service.CanCreateAppointment(
             new DateTime(2026, 11, 23, 9, 30, 0),
             out var reason);
