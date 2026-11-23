@@ -2,6 +2,7 @@ using AppointmentApp.Core.Interfaces;
 using AppointmentApp.Core.Persistence;
 using AppointmentApp.Core.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,11 +33,31 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configurar Swagger para probar la API desde el navegador.
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "AppointmentApp API",
+        Version = "v1",
+        Description = "Sistema de citas para pequeña empresa"
+    });
+});
+
 var app = builder.Build();
 
 app.UseHttpsRedirection();
 
 app.UseCors("PermitirFrontend");
+
+// Habilitar Swagger UI.
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "AppointmentApp API v1");
+    c.RoutePrefix = string.Empty; // Para acceder desde la raíz: http://localhost:5000/
+});
 
 // Endpoint de salud (se mantiene como minimal API por simplicidad).
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
