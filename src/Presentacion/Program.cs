@@ -1,7 +1,13 @@
 using AppointmentApp.Core.Interfaces;
+using AppointmentApp.Core.Persistence;
 using AppointmentApp.Core.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Registrar el contexto de base de datos con PostgreSQL.
+builder.Services.AddDbContext<AppointmentDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Registrar el servicio de disponibilidad.
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
