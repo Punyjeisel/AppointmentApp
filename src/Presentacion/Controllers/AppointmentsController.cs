@@ -22,6 +22,13 @@ public class AppointmentsController : ControllerBase
         return Ok(slots);
     }
 
+    [HttpGet]
+    public IActionResult GetAppointments()
+    {
+        var appointments = _availabilityService.GetAppointments();
+        return Ok(appointments);
+    }
+
     [HttpPost]
     public IActionResult CreateAppointment([FromBody] Appointment appointment)
     {

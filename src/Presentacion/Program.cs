@@ -15,9 +15,28 @@ builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
 // Registrar controladores de API.
 builder.Services.AddControllers();
 
+// Configurar CORS para permitir peticiones desde el frontend (React).
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirFrontend", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://localhost:3000",
+            "https://localhost:5173"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+
+app.UseCors("PermitirFrontend");
 
 // Endpoint de salud (se mantiene como minimal API por simplicidad).
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
