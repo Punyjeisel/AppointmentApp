@@ -105,7 +105,6 @@ function App() {
       if (respuesta.ok) {
         const datos = await respuesta.json()
         setResultadoCita(`✅ Cita confirmada para ${nombre} el ${formatearFecha(datos.start)} a las ${formatearHora(datos.start)}`)
-        // Reiniciar flujo de reserva
         setNombre('')
         setEmail('')
         setHorarioSeleccionado('')
@@ -162,90 +161,67 @@ function App() {
   // ================= RENDERIZADO =================
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>AppointmentApp</h1>
+    <div className="app-container">
+      <header className="app-header">
+        <h1>AppointmentApp</h1>
+      </header>
 
       {/* ===================== NAVEGACIÓN PRINCIPAL ===================== */}
-      <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', borderBottom: '1px solid #ccc', paddingBottom: '15px' }}>
+      <nav className="nav">
         <button
+          className={`nav-btn ${vistaActual === 'reservar' ? 'active' : ''}`}
           onClick={irAReservar}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            backgroundColor: vistaActual === 'reservar' ? '#1976d2' : '#f5f5f5',
-            color: vistaActual === 'reservar' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '500',
-            fontSize: '1em'
-          }}
         >
           Reservar cita
         </button>
         <button
+          className={`nav-btn ${vistaActual === 'citas' ? 'active' : ''}`}
           onClick={irAMisCitas}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            backgroundColor: vistaActual === 'citas' ? '#1976d2' : '#f5f5f5',
-            color: vistaActual === 'citas' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '500',
-            fontSize: '1em'
-          }}
         >
           Mis citas
         </button>
-      </div>
+      </nav>
 
       {/* ===================== VISTA: RESERVAR CITA ===================== */}
       {vistaActual === 'reservar' && (
-        <section id="reservar-cita">
+        <section className="section reservar-section">
           <h2>Reservar una cita nueva</h2>
 
           {/* Paso 1: Elegir fecha */}
           {!horarioSeleccionado && (
-            <div style={{ marginBottom: '30px' }}>
+            <div className="step">
               <h3>Paso 1: Elige una fecha</h3>
-              <input
-                type="date"
-                value={fechaSeleccionada}
-                onChange={(e) => setFechaSeleccionada(e.target.value)}
-              />
-              <button
-                onClick={consultarHorarios}
-                style={{ marginLeft: '10px', padding: '6px 12px', cursor: 'pointer' }}
-              >
-                Ver horarios disponibles
-              </button>
+              <div className="field-group">
+                <input
+                  type="date"
+                  value={fechaSeleccionada}
+                  onChange={(e) => setFechaSeleccionada(e.target.value)}
+                  className="input-date"
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={consultarHorarios}
+                >
+                  Ver horarios disponibles
+                </button>
+              </div>
             </div>
           )}
 
           {/* Paso 2: Elegir horario */}
           {horariosDisponibles.length > 0 && !horarioSeleccionado && (
-            <div style={{ marginBottom: '30px' }}>
+            <div className="step">
               <h3>Paso 2: Elige un horario disponible</h3>
-              <p style={{ color: '#666', marginBottom: '15px' }}>
+              <p className="step-hint">
                 Selecciona la hora que prefieras para tu cita:
               </p>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
+              <ul className="slots-list">
                 {horariosDisponibles.map((slot) => {
                   const horaInicio = formatearHora(slot.start)
                   return (
                     <li
                       key={slot.start}
-                      style={{
-                        padding: '12px 16px',
-                        marginBottom: '10px',
-                        backgroundColor: '#e3f2fd',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        border: horarioSeleccionado === slot.start ? '2px solid #1976d2' : '1px solid #ccc',
-                        fontSize: '1.1em',
-                        fontWeight: '500',
-                        transition: 'background-color 0.2s'
-                      }}
+                      className={`slot-item ${horarioSeleccionado === slot.start ? 'selected' : ''}`}
                       onClick={() => seleccionarHorario(slot.start)}
                     >
                       {horaInicio}
@@ -258,71 +234,53 @@ function App() {
 
           {/* Paso 3: Formulario de nombre y email */}
           {horarioSeleccionado && (
-            <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
+            <div className="step form-card">
               <h3>Paso 3: Confirma tu cita</h3>
-              <p style={{ marginBottom: '15px', fontWeight: 'bold', color: '#333' }}>
-                Has seleccionado: <span style={{ color: '#1976d2' }}>{formatearHora(horarioSeleccionado)}</span>
+              <p className="step-summary">
+                Has seleccionado: <span className="highlight">{formatearHora(horarioSeleccionado)}</span>
               </p>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu nombre:</label>
+              <div className="field-group">
+                <label className="field-label">Tu nombre:</label>
                 <input
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  className="input-text"
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu email:</label>
+              <div className="field-group">
+                <label className="field-label">Tu email:</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Ej: juan@email.com"
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  className="input-text"
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div className="button-group">
                 <button
+                  className="btn btn-success"
                   onClick={confirmarCita}
-                  style={{
-                    flex: 1,
-                    padding: '10px 20px',
-                    backgroundColor: '#4caf50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '1em',
-                    fontWeight: 'bold'
-                  }}
                 >
                   Confirmar cita
                 </button>
                 <button
+                  className="btn btn-secondary"
                   onClick={resetearReserva}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#e0e0e0',
-                    color: '#333',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '1em'
-                  }}
                 >
                   Cambiar horario
                 </button>
               </div>
 
               {resultadoCita && (
-                <div style={{ marginTop: '15px', padding: '12px', borderRadius: '4px',
-                  backgroundColor: resultadoCita.startsWith('✅') ? '#d4edda' : '#f8d7da',
-                  color: resultadoCita.startsWith('✅') ? '#155724' : '#721c24' }}>
+                <div
+                  className={`alert ${resultadoCita.startsWith('✅') ? 'alert-success' : 'alert-error'}`}
+                >
                   {resultadoCita}
                 </div>
               )}
@@ -333,53 +291,45 @@ function App() {
 
       {/* ===================== VISTA: MIS CITAS ===================== */}
       {vistaActual === 'citas' && (
-        <section id="mis-citas" style={{ marginTop: '20px' }}>
+        <section className="section citas-section">
           <h2>Mis citas</h2>
 
-          <div style={{ marginBottom: '20px' }}>
+          <div className="field-group">
             <input
               type="email"
               value={emailMisCitas}
               onChange={(e) => setEmailMisCitas(e.target.value)}
               placeholder="Ingresa tu email (ej. juan@email.com)"
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', width: '320px', marginRight: '10px' }}
+              className="input-text"
             />
             <button
+              className="btn btn-primary"
               onClick={consultarMisCitas}
-              style={{ padding: '8px 16px', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
             >
               Consultar mis citas
             </button>
           </div>
 
           {resultadoMisCitas && (
-            <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '4px',
-              backgroundColor: resultadoMisCitas.startsWith('❌') ? '#f8d7da' : '#d4edda',
-              color: resultadoMisCitas.startsWith('❌') ? '#721c24' : '#155724' }}>
+            <div
+              className={`alert ${resultadoMisCitas.startsWith('❌') ? 'alert-error' : 'alert-success'}`}
+            >
               {resultadoMisCitas}
             </div>
           )}
 
           {citasMisCitas.length > 0 && (
-            <div>
+            <div className="citas-lista">
               <h3>Tus citas:</h3>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
+              <ul className="citas-list">
                 {citasMisCitas.map((cita) => (
                   <li
                     key={`${cita.Start}-${cita.ClientName}`}
-                    style={{
-                      padding: '12px 16px',
-                      marginBottom: '10px',
-                      backgroundColor: '#f8f9fa',
-                      borderRadius: '8px',
-                      border: '1px solid #dee2e6',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
+                    className="cita-item"
                   >
-                    <div>
-                      <strong>{formatearFecha(cita.Start)}</strong> - <span style={{ color: '#1976d2' }}>{formatearHora(cita.Start)}</span>
+                    <div className="cita-info">
+                      <strong>{formatearFecha(cita.Start)}</strong>
+                      <span className="cita-hora">{formatearHora(cita.Start)}</span>
                     </div>
                   </li>
                 ))}
