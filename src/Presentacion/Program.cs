@@ -47,9 +47,22 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// CORS debe ir al principio para que funcione incluso cuando hay errores 500.
+app.UseCors("PermitirFrontend");
+
 app.UseHttpsRedirection();
 
-app.UseCors("PermitirFrontend");
+// Manejador de errores global: devuelve el mensaje real con CORS headers.
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        context.Response.Headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
+        await context.Response.WriteAsync("{\"error\": \"Error interno del servidor. Verifique que PostgreSQL esté corriendo.\"}");
+    });
+});
 
 // Habilitar Swagger UI.
 app.UseSwagger();
