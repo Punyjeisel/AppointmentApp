@@ -282,4 +282,48 @@ public class AvailabilityServiceTests
         Assert.True(ok);
         Assert.Null(reason);
     }
+
+    // GetAppointmentsByEmail con email que tiene citas debe devolver solo esas citas.
+    [Fact]
+    public void GetAppointmentsByEmail_WithValidEmail_ReturnsAppointmentsForThatEmail()
+    {
+        var citas = _service.GetAppointmentsByEmail("juan@example.com").ToList();
+
+        Assert.Single(citas);
+        Assert.Equal("Juan Pérez", citas[0].ClientName);
+        Assert.Equal("juan@example.com", citas[0].ClientName != null ? "juan@example.com" : string.Empty);
+    }
+
+    // GetAppointmentsByEmail con email que no tiene citas debe devolver lista vacía.
+    [Fact]
+    public void GetAppointmentsByEmail_WithEmailThatHasNoAppointments_ReturnsEmpty()
+    {
+        var citas = _service.GetAppointmentsByEmail("nadie@example.com").ToList();
+
+        Assert.Empty(citas);
+    }
+
+    // GetAppointmentsByEmail con email nulo o vacío debe devolver lista vacía.
+    [Fact]
+    public void GetAppointmentsByEmail_WithNullOrEmptyEmail_ReturnsEmpty()
+    {
+        var citasNulo = _service.GetAppointmentsByEmail(null).ToList();
+        var citasVacio = _service.GetAppointmentsByEmail(string.Empty).ToList();
+        var citasEspacios = _service.GetAppointmentsByEmail("   ").ToList();
+
+        Assert.Empty(citasNulo);
+        Assert.Empty(citasVacio);
+        Assert.Empty(citasEspacios);
+    }
+
+    // GetAppointmentsByEmail debe ser insensible a mayúsculas/minúsculas.
+    [Fact]
+    public void GetAppointmentsByEmail_IsCaseInsensitive()
+    {
+        var citasMinuscula = _service.GetAppointmentsByEmail("JUAN@EXAMPLE.COM").ToList();
+        var citasMayuscula = _service.GetAppointmentsByEmail("juan@example.com").ToList();
+
+        Assert.Equal(citasMayuscula.Count, citasMinuscula.Count);
+        Assert.Single(citasMinuscula);
+    }
 }

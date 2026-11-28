@@ -1,75 +1,53 @@
 import { useState } from 'react'
 import './App.css'
 
-// ================= FUNCIONES AUXILIARES =================
+// ================= FUNCIONES AUXILIARES DE FECHA =================
+// Extraen fecha y hora con regex directamente del string ISO,
+// sin depender de new Date() que falla con muchos formatos.
 
-// Función auxiliar para parsear fechas de forma robusta desde el backend
-// Extrae los componentes numéricos y construye la fecha en UTC para evitar
-// problemas de zona horaria y formato.
-function parsearFechaSegura(fechaISO: string): Date | null {
-  if (!fechaISO || typeof fechaISO !== 'string') return null
+const MESES_ES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+]
 
-  // Limpiar espacios
-  const limpio = fechaISO.trim()
+const DIAS_SEMANA_ES = [
+  'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
+]
 
-  // Intento 1: parseo directo de JavaScript
-  let fecha = new Date(limpio)
-  if (!isNaN(fecha.getTime())) return fecha
-
-  // Intento 2: Extraer componentes numéricos con regex
-  // Soporta: 2026-11-23T09:00:00, 2026-11-23 09:00:00, 2026-11-23T09:00:00.000Z, etc.
-  const match = limpio.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T\s](\d{2}):(\d{2}):(\d{2})/)
+function extraerHora(fechaISO: string): string {
+  if (!fechaISO || typeof fechaISO !== 'string') return 'Hora inválida'
+  const match = fechaISO.match(/T(\d{2}):(\d{2})/)
   if (match) {
-    const [, año, mes, dia, hora, minuto, segundo] = match
-    fecha = new Date(Date.UTC(
-      parseInt(año, 10),
-      parseInt(mes, 10) - 1,
-      parseInt(dia, 10),
-      parseInt(hora, 10),
-      parseInt(minuto, 10),
-      parseInt(segundo, 10)
-    ))
-    if (!isNaN(fecha.getTime())) return fecha
+    const hora24 = parseInt(match[1], 10)
+    const minuto = match[2]
+    const hora12 = hora24 % 12 || 12
+    const ampm = hora24 < 12 ? 'AM' : 'PM'
+    return `${hora12}:${minuto} ${ampm}`
   }
+  return 'Hora inválida'
+}
 
-  // Intento 3: Si solo hay fecha (YYYY-MM-DD)
-  const matchSoloFecha = limpio.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/)
-  if (matchSoloFecha) {
-    const [, año, mes, dia] = matchSoloFecha
-    fecha = new Date(Date.UTC(
-      parseInt(año, 10),
-      parseInt(mes, 10) - 1,
-      parseInt(dia, 10)
-    ))
-    if (!isNaN(fecha.getTime())) return fecha
+function extraerFecha(fechaISO: string): string {
+  if (!fechaISO || typeof fechaISO !== 'string') return 'Fecha inválida'
+  const match = fechaISO.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (match) {
+    const [, añoStr, mesStr, diaStr] = match
+    const año = parseInt(añoStr, 10)
+    const mes = parseInt(mesStr, 10)
+    const dia = parseInt(diaStr, 10)
+    const fecha = new Date(año, mes - 1, dia)
+    const diaSemana = DIAS_SEMANA_ES[fecha.getDay()]
+    return `${diaSemana}, ${dia} de ${MESES_ES[mes - 1]}`
   }
-
-  // Intento 4: Último recurso con JavaScript nativo después de limpiar
-  fecha = new Date(limpio.replace(' ', 'T'))
-  if (!isNaN(fecha.getTime())) return fecha
-
-  return null
+  return 'Fecha inválida'
 }
 
 function formatearHora(fechaISO: string): string {
-  const fecha = parsearFechaSegura(fechaISO)
-  if (!fecha) return 'Hora inválida'
-  return fecha.toLocaleTimeString('es-DO', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
+  return extraerHora(fechaISO)
 }
 
 function formatearFecha(fechaISO: string): string {
-  const fecha = parsearFechaSegura(fechaISO)
-  if (!fecha) return 'Fecha inválida'
-  return fecha.toLocaleDateString('es-DO', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  return extraerFecha(fechaISO)
 }
 
 type Vista = 'reservar' | 'citas'
