@@ -41,6 +41,9 @@ namespace AppointmentApp.Core.src.Core.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("ReminderSent")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("End")
                         .HasColumnType("timestamp with time zone");
 

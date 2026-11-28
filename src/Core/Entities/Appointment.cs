@@ -9,4 +9,5 @@ public sealed class Appointment
     public string ClientName { get; set; } = string.Empty;
     public string ClientEmail { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public bool ReminderSent { get; set; }
 }

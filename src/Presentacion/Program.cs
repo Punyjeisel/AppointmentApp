@@ -1,6 +1,7 @@
 using AppointmentApp.Core.Interfaces;
 using AppointmentApp.Core.Persistence;
 using AppointmentApp.Core.Services;
+using AppointmentApp.Presentacion.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -12,6 +13,12 @@ builder.Services.AddDbContext<AppointmentDbContext>(options =>
 
 // Registrar el servicio de disponibilidad.
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
+
+// Registrar el servicio de correo electrónico (MailKit + Gmail SMTP).
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+// Registrar el servicio en segundo plano de recordatorios (1 hora antes de cada cita).
+builder.Services.AddHostedService<ReminderBackgroundService>();
 
 // Registrar controladores de API.
 builder.Services.AddControllers();

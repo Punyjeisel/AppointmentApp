@@ -44,7 +44,7 @@ public class AppointmentsController : ControllerBase
 
     // POST /api/appointments
     [HttpPost]
-    public IActionResult CreateAppointment([FromBody] CreateAppointmentRequest request)
+    public async Task<IActionResult> CreateAppointment([FromBody] CreateAppointmentRequest request)
     {
         var available = _availabilityService.CanCreateAppointment(request.Start, out var reason);
 
@@ -56,6 +56,22 @@ public class AppointmentsController : ControllerBase
         _availabilityService.AddAppointment(request);
 
         var end = request.Start.AddMinutes(60);
+
+        // Enviar confirmación por correo (Enfoque A: no bloquea si falla).
+        try
+        {
+            var emailService = HttpContext.RequestServices.GetRequiredService<IEmailService>();
+            await emailService.SendConfirmationAsync(request.ClientEmail, new AppointmentDto
+            {
+                Start = request.Start,
+                End = end,
+                ClientName = request.ClientName
+            });
+        }
+        catch
+        {
+            // Ignorar: la cita ya está creada y el correo se puede reintentar.
+        }
 
         return Created($"/api/appointments/{request.Start:yyyy-MM-ddTHH:mm:ss}", new AppointmentCreatedResponse
         {

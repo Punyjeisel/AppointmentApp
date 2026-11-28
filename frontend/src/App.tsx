@@ -74,13 +74,26 @@ function formatearFecha(fechaISO: string): string {
 
 type Vista = 'reservar' | 'citas'
 
+interface HorarioDisponible {
+  start: string
+  end: string
+  isAvailable: boolean
+  durationMinutes: number
+}
+
+interface CitaCliente {
+  start: string
+  end: string
+  clientName: string
+}
+
 function App() {
   // ================= ESTADO DE NAVEGACIÓN =================
   const [vistaActual, setVistaActual] = useState<Vista>('reservar')
 
   // ================= ESTADOS: RESERVAR CITA =================
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('')
-  const [horariosDisponibles, setHorariosDisponibles] = useState<any[]>([])
+  const [horariosDisponibles, setHorariosDisponibles] = useState<HorarioDisponible[]>([])
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>('')
 
   const [nombre, setNombre] = useState('')
@@ -89,7 +102,7 @@ function App() {
 
   // ================= ESTADOS: MIS CITAS =================
   const [emailMisCitas, setEmailMisCitas] = useState<string>('')
-  const [citasMisCitas, setCitasMisCitas] = useState<any[]>([])
+  const [citasMisCitas, setCitasMisCitas] = useState<CitaCliente[]>([])
   const [resultadoMisCitas, setResultadoMisCitas] = useState<string>('')
 
   // ================= FUNCIONES: NAVEGACIÓN =================
@@ -118,9 +131,9 @@ function App() {
       const respuesta = await fetch(
         `http://localhost:5000/api/appointments/available-slots?date=${fechaSeleccionada}`
       )
-      const datos = await respuesta.json()
+      const datos: HorarioDisponible[] = await respuesta.json()
 
-      const soloDisponibles = datos.filter((slot: any) => slot.isAvailable)
+      const soloDisponibles = datos.filter((slot) => slot.isAvailable)
       setHorariosDisponibles(soloDisponibles)
     } catch (error) {
       alert('Error al consultar horarios. ¿Está corriendo el backend?')
@@ -212,11 +225,14 @@ function App() {
         return
       }
 
-      const datos = await respuesta.json()
+      const datos: CitaCliente[] = await respuesta.json()
       setCitasMisCitas(datos)
       setResultadoMisCitas(datos.length === 0 ? 'No tienes citas registradas con este email.' : `${datos.length} cita(s) encontrada(s).`)
-    } catch (error: any) {
-      setResultadoMisCitas(`❌ Error de conexión: ${error.message || 'Verifica que el backend esté corriendo en localhost:5000'}`)
+    } catch (error: unknown) {
+      const mensaje = error instanceof Error
+        ? error.message
+        : 'Verifica que el backend esté corriendo en localhost:5000'
+      setResultadoMisCitas(`❌ Error de conexión: ${mensaje}`)
       console.error(error)
     }
   }
@@ -392,8 +408,8 @@ function App() {
                     className="cita-item"
                   >
                     <div className="cita-info">
-                      <strong>{formatearFecha(cita.Start)}</strong>
-                      <span className="cita-hora">{formatearHora(cita.Start)}</span>
+                      <strong>{formatearFecha(cita.start)}</strong>
+                      <span className="cita-hora">{formatearHora(cita.start)}</span>
                     </div>
                   </li>
                 ))}
