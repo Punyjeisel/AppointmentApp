@@ -24,6 +24,13 @@ public sealed class AvailabilityService : IAvailabilityService
     // Cada cita dura exactamente 60 minutos.
     public const int AppointmentDurationMinutes = 60;
 
+    // PostgreSQL con Npgsql requiere DateTime con Kind = Utc para columnas timestamp with time zone.
+    // Convertimos cualquier fecha entrante a Utc para evitar errores de conversión.
+    private static DateTime ToUtc(DateTime dateTime)
+    {
+        return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+    }
+
     // Devuelve los horarios disponibles para una fecha.
     // Considera horario de apertura/cierre y citas existentes.
     public IEnumerable<AvailabilitySlotDto> GetAvailableSlots(DateTime date)
@@ -79,20 +86,22 @@ public sealed class AvailabilityService : IAvailabilityService
     {
         reason = null;
 
-        var end = start.AddMinutes(AppointmentDurationMinutes); // La cita dura exactamente 60 minutos.
+        // Convertir a UTC para evitar errores con PostgreSQL timestamp with time zone.
+        var startUtc = ToUtc(start);
+        var end = startUtc.AddMinutes(AppointmentDurationMinutes); // La cita dura exactamente 60 minutos.
 
         // Hora actual del negocio (zona America/Santo_Domingo, UTC-4).
         var now = DateTime.UtcNow.AddHours(-4);
 
         // Regla: mínima 1 hora de anticipación.
-        if (start < now.AddHours(1))
+        if (startUtc < now.AddHours(1))
         {
             reason = "La cita debe reservarse con al menos 1 hora de anticipación.";
             return false;
         }
 
         // Regla: máxima 30 días de anticipación.
-        if (start > now.AddDays(30))
+        if (startUtc > now.AddDays(30))
         {
             reason = "La cita no puede reservarse con más de 30 días de anticipación.";
             return false;
@@ -101,7 +110,7 @@ public sealed class AvailabilityService : IAvailabilityService
         // Regla: no solaparse con citas existentes ni bloqueos.
         // Dos citas se solapan si el inicio de una es antes del fin de la otra
         // y el fin de una es después del inicio de la otra.
-        var chocaConCita = _context.Appointments.Any(a => start < a.End && end > a.Start);
+        var chocaConCita = _context.Appointments.Any(a => startUtc < a.End && end > a.Start);
 
         // Todo validó correctamente.
         return true;
@@ -110,10 +119,12 @@ public sealed class AvailabilityService : IAvailabilityService
     // Agrega una cita a la base de datos (uso interno de la API).
     public void AddAppointment(CreateAppointmentRequest request)
     {
+        // Convertir a UTC para evitar errores con PostgreSQL timestamp with time zone.
+        var startUtc = ToUtc(request.Start);
         var appointment = new Appointment
         {
-            Start = request.Start,
-            End = request.Start.AddMinutes(AppointmentDurationMinutes),
+            Start = startUtc,
+            End = startUtc.AddMinutes(AppointmentDurationMinutes),
             ClientName = request.ClientName,
             ClientEmail = request.ClientEmail,
             CreatedAt = DateTime.UtcNow.AddHours(-4)
@@ -126,7 +137,9 @@ public sealed class AvailabilityService : IAvailabilityService
     // Elimina una cita por su fecha de inicio (uso interno de la API).
     public bool RemoveAppointment(DateTime appointmentStart)
     {
-        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        // Convertir a UTC para evitar errores con PostgreSQL timestamp with time zone.
+        var startUtc = ToUtc(appointmentStart);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == startUtc);
         if (cita is null) return false;
         _context.Appointments.Remove(cita);
         _context.SaveChanges();
@@ -137,7 +150,9 @@ public sealed class AvailabilityService : IAvailabilityService
     public bool CanCancelAppointment(DateTime appointmentStart, out string? reason)
     {
         reason = null;
-        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        // Convertir a UTC para evitar errores con PostgreSQL timestamp with time zone.
+        var startUtc = ToUtc(appointmentStart);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == startUtc);
         DateTime now = DateTime.UtcNow.AddHours(-4);
         
         if (cita == null)
@@ -159,7 +174,9 @@ public sealed class AvailabilityService : IAvailabilityService
     public bool CanRescheduleAppointment(DateTime appointmentStart, DateTime newStart, out string? reason)
     {
         reason = null;
-        var cita = _context.Appointments.FirstOrDefault(a => a.Start == appointmentStart);
+        // Convertir a UTC para evitar errores con PostgreSQL timestamp with time zone.
+        var startUtc = ToUtc(appointmentStart);
+        var cita = _context.Appointments.FirstOrDefault(a => a.Start == startUtc);
         
     if (cita == null)
         {
@@ -176,6 +193,6 @@ public sealed class AvailabilityService : IAvailabilityService
         }
         
         string? ignoreReason;
-        return CanCreateAppointment(newStart, out ignoreReason);
+        return CanCreateAppointment(ToUtc(newStart), out ignoreReason);
     }
 }
