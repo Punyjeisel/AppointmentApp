@@ -146,8 +146,11 @@ public class AvailabilityServiceTests
     [Fact]
     public void CanCreateAppointment_AcceptsValidAppointment()
     {
+        var ahoraLocal = DateTime.UtcNow.AddHours(-4);
+        var start = ahoraLocal.AddDays(2).AddHours(14); // 2 días desde hoy a las 14:00
+
         var ok = _service.CanCreateAppointment(
-            new DateTime(2026, 11, 23, 14, 0, 0),
+            start,
             out var reason);
 
         Assert.True(ok);
