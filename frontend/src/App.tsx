@@ -139,20 +139,13 @@ function App() {
                     borderRadius: '8px',
                     cursor: 'pointer',
                     border: horarioSeleccionado === slot.start ? '2px solid #1976d2' : '1px solid #ccc',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    fontSize: '1.1em',
+                    fontWeight: '500',
                     transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={() => {
-                    if (horarioSeleccionado !== slot.start) {
-                      // No cambiamos el estilo aquí directamente, solo para referencia visual
-                    }
                   }}
                   onClick={() => seleccionarHorario(slot.start)}
                 >
-                  <span style={{ fontSize: '1.1em', fontWeight: '500' }}>{horaInicio}</span>
-                  <span style={{ fontWeight: 'bold', color: '#4caf50' }}>✅ Disponible</span>
+                  {horaInicio}
                 </li>
               )
             })}
