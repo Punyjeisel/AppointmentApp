@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 
 // ================= FUNCIONES AUXILIARES DE FECHA =================
-// Extraen fecha y hora con regex directamente del string ISO,
+// Extraen fecha y hora de cualquier formato de string ISO,
 // sin depender de new Date() que falla con muchos formatos.
 
 const MESES_ES = [
@@ -14,32 +14,54 @@ const DIAS_SEMANA_ES = [
   'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'
 ]
 
+// Busca la primera hora HH:MM en el string (formato 24h)
 function extraerHora(fechaISO: string): string {
-  if (!fechaISO || typeof fechaISO !== 'string') return 'Hora inválida'
-  const match = fechaISO.match(/T(\d{2}):(\d{2})/)
+  if (!fechaISO || typeof fechaISO !== 'string' || fechaISO === 'undefined') return 'Hora inválida'
+
+  // Intento 1: T09:00 (ISO estándar)
+  let match = fechaISO.match(/T(\d{1,2}):(\d{2})/)
   if (match) {
-    const hora24 = parseInt(match[1], 10)
-    const minuto = match[2]
-    const hora12 = hora24 % 12 || 12
-    const ampm = hora24 < 12 ? 'AM' : 'PM'
-    return `${hora12}:${minuto} ${ampm}`
+    return formatearHora12(parseInt(match[1], 10), match[2])
   }
+
+  // Intento 2: 09:00 (solo hora, sin T)
+  match = fechaISO.match(/(\d{1,2}):(\d{2})/)
+  if (match) {
+    return formatearHora12(parseInt(match[1], 10), match[2])
+  }
+
   return 'Hora inválida'
 }
 
+function formatearHora12(hora24: number, minuto: string): string {
+  const hora12 = hora24 % 12 || 12
+  const ampm = hora24 < 12 ? 'AM' : 'PM'
+  return `${hora12}:${minuto} ${ampm}`
+}
+
+// Busca la primera fecha YYYY-MM-DD en el string
 function extraerFecha(fechaISO: string): string {
-  if (!fechaISO || typeof fechaISO !== 'string') return 'Fecha inválida'
-  const match = fechaISO.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (!fechaISO || typeof fechaISO !== 'string' || fechaISO === 'undefined') return 'Fecha inválida'
+
+  // Intento 1: YYYY-MM-DD (ISO estándar)
+  let match = fechaISO.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
   if (match) {
-    const [, añoStr, mesStr, diaStr] = match
-    const año = parseInt(añoStr, 10)
-    const mes = parseInt(mesStr, 10)
-    const dia = parseInt(diaStr, 10)
-    const fecha = new Date(año, mes - 1, dia)
-    const diaSemana = DIAS_SEMANA_ES[fecha.getDay()]
-    return `${diaSemana}, ${dia} de ${MESES_ES[mes - 1]}`
+    return formatearFechaDesdeNumeros(parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10))
   }
+
+  // Intento 2: YYYY/MM/DD
+  match = fechaISO.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/)
+  if (match) {
+    return formatearFechaDesdeNumeros(parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10))
+  }
+
   return 'Fecha inválida'
+}
+
+function formatearFechaDesdeNumeros(año: number, mes: number, dia: number): string {
+  const fecha = new Date(año, mes - 1, dia)
+  const diaSemana = DIAS_SEMANA_ES[fecha.getDay()]
+  return `${diaSemana}, ${dia} de ${MESES_ES[mes - 1]}`
 }
 
 function formatearHora(fechaISO: string): string {
@@ -364,9 +386,9 @@ function App() {
             <div className="citas-lista">
               <h3>Tus citas:</h3>
               <ul className="citas-list">
-                {citasMisCitas.map((cita) => (
+                {citasMisCitas.map((cita, index) => (
                   <li
-                    key={`${cita.Start}-${cita.ClientName}`}
+                    key={`cita-${index}`}
                     className="cita-item"
                   >
                     <div className="cita-info">

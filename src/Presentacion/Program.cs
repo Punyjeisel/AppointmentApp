@@ -3,8 +3,6 @@ using AppointmentApp.Core.Persistence;
 using AppointmentApp.Core.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,12 +13,8 @@ builder.Services.AddDbContext<AppointmentDbContext>(options =>
 // Registrar el servicio de disponibilidad.
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
 
-// Registrar controladores de API con serialización JSON consistente para DateTime (ISO 8601 con zona horaria).
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
-    });
+// Registrar controladores de API.
+builder.Services.AddControllers();
 
 // Configurar CORS para permitir peticiones desde el frontend (React).
 builder.Services.AddCors(options =>
@@ -87,24 +81,3 @@ app.MapControllers();
 app.Run();
 
 public partial class Program { }
-
-// Convierte DateTime a formato ISO 8601 con zona horaria (UTC) para evitar
-// problemas de parseo en el frontend (Invalid Date).
-public class UtcDateTimeConverter : JsonConverter<DateTime>
-{
-    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        return DateTime.Parse(reader.GetString()!, null, System.Globalization.DateTimeStyles.RoundtripKind);
-    }
-
-    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
-    {
-        // Si es Unspecified (común con Npgsql/PostgreSQL), asumir que es UTC
-        if (value.Kind == DateTimeKind.Unspecified)
-        {
-            value = DateTime.SpecifyKind(value, DateTimeKind.Utc);
-        }
-        // Formato ISO 8601 simple y consistente que JavaScript parsea sin problemas
-        writer.WriteStringValue(value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-    }
-}
