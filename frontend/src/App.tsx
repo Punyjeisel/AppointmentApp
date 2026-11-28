@@ -3,8 +3,57 @@ import './App.css'
 
 // ================= FUNCIONES AUXILIARES =================
 
+// Función auxiliar para parsear fechas de forma robusta desde el backend
+// Extrae los componentes numéricos y construye la fecha en UTC para evitar
+// problemas de zona horaria y formato.
+function parsearFechaSegura(fechaISO: string): Date | null {
+  if (!fechaISO || typeof fechaISO !== 'string') return null
+
+  // Limpiar espacios
+  const limpio = fechaISO.trim()
+
+  // Intento 1: parseo directo de JavaScript
+  let fecha = new Date(limpio)
+  if (!isNaN(fecha.getTime())) return fecha
+
+  // Intento 2: Extraer componentes numéricos con regex
+  // Soporta: 2026-11-23T09:00:00, 2026-11-23 09:00:00, 2026-11-23T09:00:00.000Z, etc.
+  const match = limpio.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T\s](\d{2}):(\d{2}):(\d{2})/)
+  if (match) {
+    const [, año, mes, dia, hora, minuto, segundo] = match
+    fecha = new Date(Date.UTC(
+      parseInt(año, 10),
+      parseInt(mes, 10) - 1,
+      parseInt(dia, 10),
+      parseInt(hora, 10),
+      parseInt(minuto, 10),
+      parseInt(segundo, 10)
+    ))
+    if (!isNaN(fecha.getTime())) return fecha
+  }
+
+  // Intento 3: Si solo hay fecha (YYYY-MM-DD)
+  const matchSoloFecha = limpio.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/)
+  if (matchSoloFecha) {
+    const [, año, mes, dia] = matchSoloFecha
+    fecha = new Date(Date.UTC(
+      parseInt(año, 10),
+      parseInt(mes, 10) - 1,
+      parseInt(dia, 10)
+    ))
+    if (!isNaN(fecha.getTime())) return fecha
+  }
+
+  // Intento 4: Último recurso con JavaScript nativo después de limpiar
+  fecha = new Date(limpio.replace(' ', 'T'))
+  if (!isNaN(fecha.getTime())) return fecha
+
+  return null
+}
+
 function formatearHora(fechaISO: string): string {
-  const fecha = new Date(fechaISO)
+  const fecha = parsearFechaSegura(fechaISO)
+  if (!fecha) return 'Hora inválida'
   return fecha.toLocaleTimeString('es-DO', {
     hour: 'numeric',
     minute: '2-digit',
@@ -13,7 +62,8 @@ function formatearHora(fechaISO: string): string {
 }
 
 function formatearFecha(fechaISO: string): string {
-  const fecha = new Date(fechaISO)
+  const fecha = parsearFechaSegura(fechaISO)
+  if (!fecha) return 'Fecha inválida'
   return fecha.toLocaleDateString('es-DO', {
     weekday: 'long',
     year: 'numeric',
@@ -143,8 +193,21 @@ function App() {
       )
 
       if (!respuesta.ok) {
-        const error = await respuesta.json()
-        setResultadoMisCitas(`❌ Error: ${error.error || 'No se pudieron consultar las citas'}`)
+        let mensajeError = `Error del servidor (${respuesta.status})`
+        try {
+          const texto = await respuesta.text()
+          if (texto) {
+            try {
+              const error = JSON.parse(texto)
+              mensajeError = error.error || mensajeError
+            } catch {
+              mensajeError = texto.length > 100 ? texto.substring(0, 100) + '...' : texto
+            }
+          }
+        } catch {
+          // Usar mensaje genérico
+        }
+        setResultadoMisCitas(`❌ ${mensajeError}`)
         setCitasMisCitas([])
         return
       }
@@ -152,8 +215,8 @@ function App() {
       const datos = await respuesta.json()
       setCitasMisCitas(datos)
       setResultadoMisCitas(datos.length === 0 ? 'No tienes citas registradas con este email.' : `${datos.length} cita(s) encontrada(s).`)
-    } catch (error) {
-      setResultadoMisCitas('❌ Error de conexión con el servidor.')
+    } catch (error: any) {
+      setResultadoMisCitas(`❌ Error de conexión: ${error.message || 'Verifica que el backend esté corriendo en localhost:5000'}`)
       console.error(error)
     }
   }
@@ -191,7 +254,7 @@ function App() {
           {!horarioSeleccionado && (
             <div className="step">
               <h3>Paso 1: Elige una fecha</h3>
-              <div className="field-group">
+              <div className="field-row">
                 <input
                   type="date"
                   value={fechaSeleccionada}
@@ -305,6 +368,7 @@ function App() {
             <button
               className="btn btn-primary"
               onClick={consultarMisCitas}
+              style={{ marginTop: 'var(--spacing)' }}
             >
               Consultar mis citas
             </button>
