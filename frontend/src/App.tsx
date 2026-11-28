@@ -270,7 +270,7 @@ function App() {
           {!horarioSeleccionado && (
             <div className="step">
               <h3>Paso 1: Elige una fecha</h3>
-              <div className="field-row">
+              <div className="field-group">
                 <input
                   type="date"
                   value={fechaSeleccionada}
@@ -280,6 +280,7 @@ function App() {
                 <button
                   className="btn btn-primary"
                   onClick={consultarHorarios}
+                  style={{ marginTop: 'var(--spacing)' }}
                 >
                   Ver horarios disponibles
                 </button>
@@ -313,13 +314,13 @@ function App() {
 
           {/* Paso 3: Formulario de nombre y email */}
           {horarioSeleccionado && (
-            <div className="step form-card">
+            <div className="step form-card paso-confirmar">
               <h3>Paso 3: Confirma tu cita</h3>
               <p className="step-summary">
                 Has seleccionado: <span className="highlight">{formatearHora(horarioSeleccionado)}</span>
               </p>
 
-              <div className="field-group">
+              <div className="field-group campo">
                 <label className="field-label">Tu nombre:</label>
                 <input
                   type="text"
@@ -330,7 +331,7 @@ function App() {
                 />
               </div>
 
-              <div className="field-group">
+              <div className="field-group campo">
                 <label className="field-label">Tu email:</label>
                 <input
                   type="email"
@@ -341,7 +342,7 @@ function App() {
                 />
               </div>
 
-              <div className="button-group">
+              <div className="button-group acciones">
                 <button
                   className="btn btn-success"
                   onClick={confirmarCita}
