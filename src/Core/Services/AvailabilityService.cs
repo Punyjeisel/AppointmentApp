@@ -80,6 +80,24 @@ public sealed class AvailabilityService : IAvailabilityService
             ClientName = a.ClientName
         }).ToList();
 
+    // Devuelve las citas de un email específico (para la pantalla "Mis citas").
+    public IEnumerable<AppointmentDto> GetAppointmentsByEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return Enumerable.Empty<AppointmentDto>();
+
+        return _context.Appointments
+            .Where(a => a.ClientEmail.ToLower() == email.ToLower())
+            .Select(a => new AppointmentDto
+            {
+                Start = a.Start,
+                End = a.End,
+                ClientName = a.ClientName
+            })
+            .OrderBy(a => a.Start)
+            .ToList();
+    }
+
     // Intenta crear una cita empezando en 'start'.
     // Valida: anticipación mínima (1h), máxima (30d), duración (60min), solapamientos.
     public bool CanCreateAppointment(DateTime start, out string? reason)

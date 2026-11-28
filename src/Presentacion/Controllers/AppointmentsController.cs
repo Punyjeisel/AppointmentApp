@@ -31,6 +31,17 @@ public class AppointmentsController : ControllerBase
         return Ok(appointments);
     }
 
+    // GET /api/appointments/by-email?email=juan@email.com
+    [HttpGet("by-email")]
+    public IActionResult GetAppointmentsByEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { error = "El email es requerido." });
+
+        var appointments = _availabilityService.GetAppointmentsByEmail(email);
+        return Ok(appointments);
+    }
+
     // POST /api/appointments
     [HttpPost]
     public IActionResult CreateAppointment([FromBody] CreateAppointmentRequest request)

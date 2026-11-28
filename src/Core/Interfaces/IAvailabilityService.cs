@@ -12,6 +12,9 @@ public interface IAvailabilityService
     // Devuelve las citas ya creadas (sin exponear Id ni datos sensibles).
     IEnumerable<AppointmentDto> GetAppointments();
 
+    // Devuelve las citas de un email específico (para la pantalla "Mis citas").
+    IEnumerable<AppointmentDto> GetAppointmentsByEmail(string email);
+
     // Intenta crear una cita. Devuelve true si se puede, false si no.
     // reason contiene el mensaje de error si falla.
     bool CanCreateAppointment(DateTime start, out string? reason);
