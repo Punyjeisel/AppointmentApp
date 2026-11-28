@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import './App.css'
 
-// Función auxiliar para formatear una fecha ISO en hora legible (ej. "9:00 AM")
+// ================= FUNCIONES AUXILIARES =================
+
 function formatearHora(fechaISO: string): string {
   const fecha = new Date(fechaISO)
   return fecha.toLocaleTimeString('es-DO', {
@@ -11,7 +12,6 @@ function formatearHora(fechaISO: string): string {
   })
 }
 
-// Función auxiliar para formatear una fecha ISO en fecha legible (ej. "lunes, 23 de noviembre")
 function formatearFecha(fechaISO: string): string {
   const fecha = new Date(fechaISO)
   return fecha.toLocaleDateString('es-DO', {
@@ -22,7 +22,12 @@ function formatearFecha(fechaISO: string): string {
   })
 }
 
+type Vista = 'reservar' | 'citas'
+
 function App() {
+  // ================= ESTADO DE NAVEGACIÓN =================
+  const [vistaActual, setVistaActual] = useState<Vista>('reservar')
+
   // ================= ESTADOS: RESERVAR CITA =================
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('')
   const [horariosDisponibles, setHorariosDisponibles] = useState<any[]>([])
@@ -37,9 +42,22 @@ function App() {
   const [citasMisCitas, setCitasMisCitas] = useState<any[]>([])
   const [resultadoMisCitas, setResultadoMisCitas] = useState<string>('')
 
+  // ================= FUNCIONES: NAVEGACIÓN =================
+
+  function irAReservar() {
+    setVistaActual('reservar')
+    setResultadoCita('')
+    setResultadoMisCitas('')
+  }
+
+  function irAMisCitas() {
+    setVistaActual('citas')
+    setResultadoCita('')
+    setResultadoMisCitas('')
+  }
+
   // ================= FUNCIONES: RESERVAR CITA =================
 
-  // FUNCIÓN 1: Consultar horarios disponibles para la fecha elegida
   async function consultarHorarios() {
     if (!fechaSeleccionada) {
       alert('Por favor selecciona una fecha primero')
@@ -60,13 +78,11 @@ function App() {
     }
   }
 
-  // FUNCIÓN 2: El usuario hace clic en un horario disponible
   function seleccionarHorario(start: string) {
     setHorarioSeleccionado(start)
     setResultadoCita('')
   }
 
-  // FUNCIÓN 3: Enviar la cita al backend
   async function confirmarCita() {
     if (!nombre || !email || !horarioSeleccionado) {
       alert('Por favor completa nombre y email')
@@ -89,10 +105,12 @@ function App() {
       if (respuesta.ok) {
         const datos = await respuesta.json()
         setResultadoCita(`✅ Cita confirmada para ${nombre} el ${formatearFecha(datos.start)} a las ${formatearHora(datos.start)}`)
+        // Reiniciar flujo de reserva
         setNombre('')
         setEmail('')
         setHorarioSeleccionado('')
         setHorariosDisponibles([])
+        setFechaSeleccionada('')
       } else {
         const error = await respuesta.json()
         setResultadoCita(`❌ Error: ${error.error || 'No se pudo crear la cita'}`)
@@ -103,9 +121,17 @@ function App() {
     }
   }
 
+  function resetearReserva() {
+    setFechaSeleccionada('')
+    setHorariosDisponibles([])
+    setHorarioSeleccionado('')
+    setNombre('')
+    setEmail('')
+    setResultadoCita('')
+  }
+
   // ================= FUNCIONES: MIS CITAS =================
 
-  // FUNCIÓN 4: Consultar citas por email
   async function consultarMisCitas() {
     if (!emailMisCitas) {
       setResultadoMisCitas('Por favor ingresa tu email.')
@@ -133,194 +159,235 @@ function App() {
     }
   }
 
+  // ================= RENDERIZADO =================
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
       <h1>AppointmentApp</h1>
 
-      {/* ===================== NAVEGACIÓN ENTRE SECCIONES ===================== */}
+      {/* ===================== NAVEGACIÓN PRINCIPAL ===================== */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', borderBottom: '1px solid #ccc', paddingBottom: '15px' }}>
         <button
-          onClick={() => {
-            setResultadoCita('')
-            setResultadoMisCitas('')
+          onClick={irAReservar}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: vistaActual === 'reservar' ? '#1976d2' : '#f5f5f5',
+            color: vistaActual === 'reservar' ? 'white' : '#333',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '1em'
           }}
-          style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f5f5f5', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
         >
           Reservar cita
         </button>
         <button
-          onClick={() => {
-            setResultadoCita('')
-            setResultadoMisCitas('')
-            setFechaSeleccionada('')
-            setHorariosDisponibles([])
-            setHorarioSeleccionado('')
-            setNombre('')
-            setEmail('')
+          onClick={irAMisCitas}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: vistaActual === 'citas' ? '#1976d2' : '#f5f5f5',
+            color: vistaActual === 'citas' ? 'white' : '#333',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '1em'
           }}
-          style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f5f5f5', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
         >
           Mis citas
         </button>
       </div>
 
-      {/* ===================== SECCIÓN: RESERVAR CITA ===================== */}
-      <section id="reservar-cita">
-        <h2>Reservar una cita nueva</h2>
+      {/* ===================== VISTA: RESERVAR CITA ===================== */}
+      {vistaActual === 'reservar' && (
+        <section id="reservar-cita">
+          <h2>Reservar una cita nueva</h2>
 
-        {/* Paso 1: Elegir fecha */}
-        <div style={{ marginBottom: '30px' }}>
-          <h3>Paso 1: Elige una fecha</h3>
-          <input
-            type="date"
-            value={fechaSeleccionada}
-            onChange={(e) => setFechaSeleccionada(e.target.value)}
-          />
-          <button
-            onClick={consultarHorarios}
-            style={{ marginLeft: '10px', padding: '6px 12px', cursor: 'pointer' }}
-          >
-            Ver horarios disponibles
-          </button>
-        </div>
+          {/* Paso 1: Elegir fecha */}
+          {!horarioSeleccionado && (
+            <div style={{ marginBottom: '30px' }}>
+              <h3>Paso 1: Elige una fecha</h3>
+              <input
+                type="date"
+                value={fechaSeleccionada}
+                onChange={(e) => setFechaSeleccionada(e.target.value)}
+              />
+              <button
+                onClick={consultarHorarios}
+                style={{ marginLeft: '10px', padding: '6px 12px', cursor: 'pointer' }}
+              >
+                Ver horarios disponibles
+              </button>
+            </div>
+          )}
 
-        {/* Paso 2: Elegir horario */}
-        {horariosDisponibles.length > 0 && (
-          <div style={{ marginBottom: '30px' }}>
-            <h3>Paso 2: Elige un horario disponible</h3>
-            <p style={{ color: '#666', marginBottom: '15px' }}>
-              Selecciona la hora que prefieras para tu cita:
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {horariosDisponibles.map((slot) => {
-                const horaInicio = formatearHora(slot.start)
-                return (
+          {/* Paso 2: Elegir horario */}
+          {horariosDisponibles.length > 0 && !horarioSeleccionado && (
+            <div style={{ marginBottom: '30px' }}>
+              <h3>Paso 2: Elige un horario disponible</h3>
+              <p style={{ color: '#666', marginBottom: '15px' }}>
+                Selecciona la hora que prefieras para tu cita:
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {horariosDisponibles.map((slot) => {
+                  const horaInicio = formatearHora(slot.start)
+                  return (
+                    <li
+                      key={slot.start}
+                      style={{
+                        padding: '12px 16px',
+                        marginBottom: '10px',
+                        backgroundColor: '#e3f2fd',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        border: horarioSeleccionado === slot.start ? '2px solid #1976d2' : '1px solid #ccc',
+                        fontSize: '1.1em',
+                        fontWeight: '500',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onClick={() => seleccionarHorario(slot.start)}
+                    >
+                      {horaInicio}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Paso 3: Formulario de nombre y email */}
+          {horarioSeleccionado && (
+            <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
+              <h3>Paso 3: Confirma tu cita</h3>
+              <p style={{ marginBottom: '15px', fontWeight: 'bold', color: '#333' }}>
+                Has seleccionado: <span style={{ color: '#1976d2' }}>{formatearHora(horarioSeleccionado)}</span>
+              </p>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu nombre:</label>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ej: Juan Pérez"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu email:</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Ej: juan@email.com"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  onClick={confirmarCita}
+                  style={{
+                    flex: 1,
+                    padding: '10px 20px',
+                    backgroundColor: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '1em',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Confirmar cita
+                </button>
+                <button
+                  onClick={resetearReserva}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#e0e0e0',
+                    color: '#333',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '1em'
+                  }}
+                >
+                  Cambiar horario
+                </button>
+              </div>
+
+              {resultadoCita && (
+                <div style={{ marginTop: '15px', padding: '12px', borderRadius: '4px',
+                  backgroundColor: resultadoCita.startsWith('✅') ? '#d4edda' : '#f8d7da',
+                  color: resultadoCita.startsWith('✅') ? '#155724' : '#721c24' }}>
+                  {resultadoCita}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ===================== VISTA: MIS CITAS ===================== */}
+      {vistaActual === 'citas' && (
+        <section id="mis-citas" style={{ marginTop: '20px' }}>
+          <h2>Mis citas</h2>
+
+          <div style={{ marginBottom: '20px' }}>
+            <input
+              type="email"
+              value={emailMisCitas}
+              onChange={(e) => setEmailMisCitas(e.target.value)}
+              placeholder="Ingresa tu email (ej. juan@email.com)"
+              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', width: '320px', marginRight: '10px' }}
+            />
+            <button
+              onClick={consultarMisCitas}
+              style={{ padding: '8px 16px', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Consultar mis citas
+            </button>
+          </div>
+
+          {resultadoMisCitas && (
+            <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '4px',
+              backgroundColor: resultadoMisCitas.startsWith('❌') ? '#f8d7da' : '#d4edda',
+              color: resultadoMisCitas.startsWith('❌') ? '#721c24' : '#155724' }}>
+              {resultadoMisCitas}
+            </div>
+          )}
+
+          {citasMisCitas.length > 0 && (
+            <div>
+              <h3>Tus citas:</h3>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {citasMisCitas.map((cita) => (
                   <li
-                    key={slot.start}
+                    key={`${cita.Start}-${cita.ClientName}`}
                     style={{
                       padding: '12px 16px',
                       marginBottom: '10px',
-                      backgroundColor: '#e3f2fd',
+                      backgroundColor: '#f8f9fa',
                       borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: horarioSeleccionado === slot.start ? '2px solid #1976d2' : '1px solid #ccc',
-                      fontSize: '1.1em',
-                      fontWeight: '500',
-                      transition: 'background-color 0.2s'
+                      border: '1px solid #dee2e6',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}
-                    onClick={() => seleccionarHorario(slot.start)}
                   >
-                    {horaInicio}
+                    <div>
+                      <strong>{formatearFecha(cita.Start)}</strong> - <span style={{ color: '#1976d2' }}>{formatearHora(cita.Start)}</span>
+                    </div>
                   </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
-
-        {/* Paso 3: Formulario de cita */}
-        {horarioSeleccionado && (
-          <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f5f5f5' }}>
-            <h3>Paso 3: Confirma tu cita</h3>
-            <p style={{ marginBottom: '15px', fontWeight: 'bold', color: '#333' }}>
-              Has seleccionado: <span style={{ color: '#1976d2' }}>{formatearHora(horarioSeleccionado)}</span>
-            </p>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu nombre:</label>
-              <input
-                type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Juan Pérez"
-                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-              />
+                ))}
+              </ul>
             </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tu email:</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Ej: juan@email.com"
-                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-              />
-            </div>
-
-            <button
-              onClick={confirmarCita}
-              style={{ padding: '10px 20px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '1em', fontWeight: 'bold' }}
-            >
-              Confirmar cita
-            </button>
-
-            {resultadoCita && (
-              <div style={{ marginTop: '12px', padding: '12px', borderRadius: '4px',
-                backgroundColor: resultadoCita.startsWith('✅') ? '#d4edda' : '#f8d7da',
-                color: resultadoCita.startsWith('✅') ? '#155724' : '#721c24' }}>
-                {resultadoCita}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* ===================== SECCIÓN: MIS CITAS ===================== */}
-      <section id="mis-citas" style={{ marginTop: '40px' }}>
-        <h2>Mis citas</h2>
-
-        <div style={{ marginBottom: '20px' }}>
-          <input
-            type="email"
-            value={emailMisCitas}
-            onChange={(e) => setEmailMisCitas(e.target.value)}
-            placeholder="Ingresa tu email (ej. juan@email.com)"
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', width: '300px', marginRight: '10px' }}
-          />
-          <button
-            onClick={consultarMisCitas}
-            style={{ padding: '8px 16px', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Consultar mis citas
-          </button>
-        </div>
-
-        {resultadoMisCitas && (
-          <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '4px',
-            backgroundColor: resultadoMisCitas.startsWith('❌') ? '#f8d7da' : '#d4edda',
-            color: resultadoMisCitas.startsWith('❌') ? '#721c24' : '#155724' }}>
-            {resultadoMisCitas}
-          </div>
-        )}
-
-        {citasMisCitas.length > 0 && (
-          <div>
-            <h3>Tus citas:</h3>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {citasMisCitas.map((cita) => (
-                <li
-                  key={`${cita.Start}-${cita.ClientName}`}
-                  style={{
-                    padding: '12px 16px',
-                    marginBottom: '10px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '8px',
-                    border: '1px solid #dee2e6',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <div>
-                    <strong>{formatearFecha(cita.Start)}</strong> - <span style={{ color: '#1976d2' }}>{formatearHora(cita.Start)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      )}
     </div>
   )
 }
