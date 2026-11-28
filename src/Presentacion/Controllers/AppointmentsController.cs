@@ -46,7 +46,7 @@ public class AppointmentsController : ControllerBase
 
         var end = request.Start.AddMinutes(60);
 
-        return Created($"/api/appointments/{request.Start}", new AppointmentCreatedResponse
+        return Created($"/api/appointments/{request.Start:yyyy-MM-ddTHH:mm:ss}", new AppointmentCreatedResponse
         {
             Message = "Cita creada correctamente",
             Start = request.Start,
